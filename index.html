@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Симулятор IT-специалиста: Реальная жизнь в России 3D</title>
+    <link rel="stylesheet" href="styles.css">
+    <!-- Three.js from Cloudflare CDN with automatic fallback protection -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+    <!-- 3D Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Fade Transition -->
+    <div id="fade-screen"></div>
+
+    <!-- 3D HUD Layer -->
+    <div id="hud-layer">
+        <!-- Top HUD -->
+        <div class="top-hud">
+            <div class="status-badge-card">
+                <div class="time-location-row">
+                    <div class="clock-display" id="hud-clock">08:00</div>
+                    <div class="day-display" id="hud-day">Понедельник</div>
+                    <div class="location-tag" id="hud-location">
+                        <span>📍</span> <span id="hud-location-text">Квартира (Девяткино / Мурино)</span>
+                    </div>
+                </div>
+                <div class="vitals-grid">
+                    <div class="vital-box">
+                        <div class="vital-label">
+                            <span>Энергия</span>
+                            <span id="val-energy">85%</span>
+                        </div>
+                        <div class="vital-bar-bg">
+                            <div class="vital-bar-fill fill-energy" id="bar-energy" style="width: 85%;"></div>
+                        </div>
+                    </div>
+                    <div class="vital-box">
+                        <div class="vital-label">
+                            <span>Сытость</span>
+                            <span id="val-hunger">70%</span>
+                        </div>
+                        <div class="vital-bar-bg">
+                            <div class="vital-bar-fill fill-hunger" id="bar-hunger" style="width: 70%;"></div>
+                        </div>
+                    </div>
+                    <div class="vital-box">
+                        <div class="vital-label">
+                            <span>Стресс</span>
+                            <span id="val-stress">20%</span>
+                        </div>
+                        <div class="vital-bar-bg">
+                            <div class="vital-bar-fill fill-stress" id="bar-stress" style="width: 20%;"></div>
+                        </div>
+                    </div>
+                    <div class="vital-box">
+                        <div class="vital-label">
+                            <span>Здоровье</span>
+                            <span id="val-health">95%</span>
+                        </div>
+                        <div class="vital-bar-bg">
+                            <div class="vital-bar-fill fill-health" id="bar-health" style="width: 95%;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Right: Bank & Grade -->
+            <div class="career-card">
+                <div class="money-val" id="hud-money">64 500 ₽</div>
+                <div class="grade-badge" id="hud-grade">Junior Backend Dev</div>
+                <div class="quick-help-pill">[WASD] Движение • [E] Действие • [ESC] Курсор</div>
+            </div>
+        </div>
+
+        <!-- Center Crosshair & Interaction Prompt -->
+        <div id="reticle-container">
+            <div id="reticle"></div>
+            <div id="interaction-prompt"><kbd>E</kbd> <span id="prompt-text">Взаимодействовать</span></div>
+        </div>
+
+        <!-- Bottom Notification Center -->
+        <div id="notification-center"></div>
+    </div>
+
+    <!-- Start / Pause Overlay -->
+    <div id="start-overlay">
+        <div class="start-modal">
+            <div class="modal-header">
+                <h1>🇷🇺 <span>IT Life Simulator 3D</span></h1>
+                <p class="modal-subtitle">
+                    Реалистичный 3D-симулятор жизни и работы IT-специалиста в современной России.
+                    Управляйте персонажем от первого лица, балансируйте между работой в офисе над реальными IT-задачами, дедлайнами, бытом, сном, финансами и выгоранием.
+                </p>
+            </div>
+            <div class="keybinds-grid">
+                <div class="keybind-item"><kbd>W A S D</kbd> Ходьба в 3D</div>
+                <div class="keybind-item"><kbd>Мышь</kbd> Осмотр от 1-го лица</div>
+                <div class="keybind-item"><kbd>E</kbd> Взаимодействие с объектами</div>
+                <div class="keybind-item"><kbd>Shift</kbd> Ускорение / Бег</div>
+                <div class="keybind-item"><kbd>Space</kbd> Прыжок</div>
+                <div class="keybind-item"><kbd>ESC</kbd> Освободить мышь</div>
+            </div>
+            <button class="start-btn" id="start-game-btn" onclick="GameApp.startGame()">
+                <span>Войти в симуляцию</span>
+                <span>➔</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- Interactive 2D/3D Overlay Modal (DevOS, Fridge, Door, Bed, Standup) -->
+    <div id="interactive-overlay">
+        <!-- DevOS Virtual Computer Window -->
+        <div class="os-window" id="os-window" style="display: none;">
+            <div class="os-titlebar">
+                <div class="os-titlebar-left">
+                    <div class="os-traffic-lights">
+                        <div class="traffic-light tl-red" onclick="GameApp.closeModal()"></div>
+                        <div class="traffic-light tl-yellow"></div>
+                        <div class="traffic-light tl-green"></div>
+                    </div>
+                    <span>💻 DevOS 2.4 - Рабочая станция IT-компании</span>
+                </div>
+                <div class="os-nav-tabs">
+                    <button class="os-tab-btn" id="tab-btn-hh" onclick="GameApp.switchApp('hh')" style="color:#f87171;"><span class="hh-badge-red">hh</span> Поиск работы</button>
+                    <button class="os-tab-btn active" id="tab-btn-ide" onclick="GameApp.switchApp('ide')">📝 DevStudio IDE</button>
+                    <button class="os-tab-btn" id="tab-btn-chat" onclick="GameApp.switchApp('chat')">💬 Matterchat <span id="chat-tab-unread" class="unread-dot" style="display:none;"></span></button>
+                    <button class="os-tab-btn" id="tab-btn-board" onclick="GameApp.switchApp('board')">📊 Jira / DevTrack</button>
+                    <button class="os-tab-btn" id="tab-btn-bank" onclick="GameApp.switchApp('bank')">💳 Т-Банк Онлайн</button>
+                </div>
+                <button class="os-close-btn" onclick="GameApp.closeModal()">Закрыть [ESC]</button>
+            </div>
+
+            <div class="os-body">
+                <!-- IDE Application -->
+                
+                <!-- hh.ru Job Search App -->
+                <div class="app-view" id="app-hh">
+                    <div class="hh-container">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <span class="hh-badge-red" style="font-size:18px; padding:4px 10px;">hh.ru</span>
+                                <div>
+                                    <h2 style="font-size:18px; color:#f8fafc;">Кабинет соискателя IT</h2>
+                                    <div style="font-size:12px; color:#94a3b8;">Резюме: Начинающий программист (Junior / Trainee)</div>
+                                </div>
+                            </div>
+                            <div id="hh-status-pill" style="font-size:12px; font-weight:700; color:#f87171; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3); padding:4px 12px; border-radius:20px;">
+                                ● Статус: Безработный
+                            </div>
+                        </div>
+
+                        <!-- Resume Skills Box -->
+                        <div class="hh-resume-box">
+                            <div style="font-size:13px; font-weight:700; color:#e2e8f0;">Мои навыки в резюме (выберите, что изучили дома):</div>
+                            <div class="skills-tags-row">
+                                <button class="skill-tag-btn active" id="skill-py" onclick="HiringEngine.toggleSkill('py')">🐍 Python (Синтаксис & ООП)</button>
+                                <button class="skill-tag-btn active" id="skill-sql" onclick="HiringEngine.toggleSkill('sql')">🗄️ SQL и PostgreSQL</button>
+                                <button class="skill-tag-btn active" id="skill-git" onclick="HiringEngine.toggleSkill('git')">🌿 Git и GitHub</button>
+                                <button class="skill-tag-btn" id="skill-linux" onclick="HiringEngine.toggleSkill('linux')">🐧 Linux & Bash</button>
+                                <button class="skill-tag-btn" id="skill-docker" onclick="HiringEngine.toggleSkill('docker')">🐳 Docker (базовый)</button>
+                            </div>
+                            <div style="font-size:11px; color:#64748b;">💡 Чем больше навыков активно в резюме, тем выше шанс получить приглашение на собеседование!</div>
+                        </div>
+
+                        <!-- Vacancies List -->
+                        <div style="display:flex; flex-direction:column; gap:12px;" id="hh-vacancies-list">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="app-view active" id="app-ide">
+                    <div class="ide-container">
+                        <div class="ide-sidebar">
+                            <div class="ide-sidebar-header">Спринт #14 • Задачи в работе</div>
+                            <div class="task-list" id="ide-task-list">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                        <div class="ide-main">
+                            <div class="ide-toolbar">
+                                <div class="ide-file-tab" id="ide-file-name">📄 connection_pool.py</div>
+                                <div class="ide-actions">
+                                    <button class="ide-btn" id="btn-hint" onclick="GameApp.toggleHint()" style="background:#312e81; border-color:#4338ca; color:#a5b4fc;">💡 Подсказка</button>
+                                    <button class="ide-btn" id="btn-autofix" onclick="GameApp.autoFixCode()" style="background:#4338ca; border-color:#6366f1; color:#fff;">🪄 Вставить решение</button>
+                                    <button class="ide-btn btn-run" onclick="GameApp.runTests()">▶ Запустить PyTest</button>
+                                    <button class="ide-btn btn-commit" onclick="GameApp.commitTask()">🚀 Git Commit & PR</button>
+                                </div>
+                            </div>
+                            <div id="ide-hint-banner" style="display:block; background:#1e1b4b; border-bottom:1px solid #4338ca; padding:10px 16px; font-size:12px; color:#c7d2fe; line-height:1.5;">
+    <strong style="color:#a5b4fc;">💡 Инструкция:</strong> <span id="ide-hint-text">Выберите задачу слева.</span>
+</div>
+<div class="ide-code-container">
+                                <textarea class="code-editor" id="code-editor" spellcheck="false"></textarea>
+                            </div>
+                            <div class="ide-terminal">
+                                <div class="terminal-header">
+                                    <span>TERMINAL • bash - 80x24</span>
+                                    <span id="test-status-pill">Ready</span>
+                                </div>
+                                <div class="terminal-output" id="terminal-output">
+$ pytest tests/ -v
+Выберите задачу из списка слева для анализа кода и исправления дефекта...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Matterchat Application -->
+                <div class="app-view" id="app-chat">
+                    <div class="chat-container">
+                        <div class="chat-channels">
+                            <div class="channel-section-title">Каналы компании</div>
+                            <div class="channel-list">
+                                <button class="channel-btn active" onclick="GameApp.selectChannel('backend')"># dev-backend</button>
+                                <button class="channel-btn" onclick="GameApp.selectChannel('general')"># general-chat</button>
+                                <button class="channel-btn" onclick="GameApp.selectChannel('alerts')"># alerts-prod <span class="unread-dot"></span></button>
+                            </div>
+                            <div class="channel-section-title" style="margin-top: 10px;">Личные сообщения</div>
+                            <div class="channel-list">
+                                <button class="channel-btn" onclick="GameApp.selectChannel('lead')">👤 Тимлид (Артем)</button>
+                                <button class="channel-btn" onclick="GameApp.selectChannel('pm')">👤 PM (Ольга)</button>
+                            </div>
+                        </div>
+                        <div class="chat-main">
+                            <div class="chat-history" id="chat-messages-container">
+                                <!-- Populated by JS -->
+                            </div>
+                            <div class="chat-input-bar">
+                                <div class="chat-quick-replies" id="chat-replies-container">
+                                    <!-- Dynamic response choices -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Jira / Sprint Board Application -->
+                <div class="app-view" id="app-board">
+                    <div style="padding: 24px; width: 100%; overflow-y: auto;">
+                        <h2 style="font-size: 18px; margin-bottom: 16px; color: #f8fafc;">Канбан-доска спринта: Backend Core Q4</h2>
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;">
+                            <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 14px;">
+                                <div style="font-size: 12px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 12px;">К выполнению (To Do)</div>
+                                <div id="board-todo-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                            </div>
+                            <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 14px;">
+                                <div style="font-size: 12px; font-weight: 700; color: #38bdf8; text-transform: uppercase; margin-bottom: 12px;">В процессе (In Progress)</div>
+                                <div id="board-progress-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                            </div>
+                            <div style="background: #0f172a; border: 1px solid #1e293b; border-radius: 10px; padding: 14px;">
+                                <div style="font-size: 12px; font-weight: 700; color: #4ade80; text-transform: uppercase; margin-bottom: 12px;">Готово (Done)</div>
+                                <div id="board-done-list" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Banking App -->
+                <div class="app-view" id="app-bank">
+                    <div style="padding: 24px; max-width: 640px; margin: 0 auto; width: 100%; overflow-y: auto;">
+                        <div style="background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155; border-radius: 16px; padding: 24px; margin-bottom: 20px;">
+                            <div style="font-size: 13px; color: #94a3b8;">Black Metal • Дебетовая карта</div>
+                            <div style="font-size: 32px; font-weight: 700; color: #4ade80; font-family: var(--code-font); margin: 8px 0;" id="bank-card-balance">64 500 ₽</div>
+                            <div style="font-size: 12px; color: #64748b;">Следующая выплата (Зарплата): 10-го числа (~95 000 ₽)</div>
+                        </div>
+                        <h3 style="font-size: 15px; margin-bottom: 12px; color: #f1f5f9;">Обязательные платежи месяца:</h3>
+                        <div style="display: flex; flex-direction: column; gap: 10px;" id="bills-list">
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155;">
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 600;">Аренда квартиры (однушка)</div>
+                                    <div style="font-size: 12px; color: #94a3b8;">Срок: до 20 числа</div>
+                                </div>
+                                <button class="ide-btn" onclick="GameApp.payBill('rent', 35000)">Оплатить 35 000 ₽</button>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; background: #1e293b; padding: 12px 16px; border-radius: 8px; border: 1px solid #334155;">
+                                <div>
+                                    <div style="font-size: 14px; font-weight: 600;">ЖКХ и Скоростной интернет (500 Мбит/с)</div>
+                                    <div style="font-size: 12px; color: #94a3b8;">Срок: до 25 числа</div>
+                                </div>
+                                <button class="ide-btn" onclick="GameApp.payBill('utilities', 5500)">Оплатить 5 500 ₽</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="os-statusbar">
+                <span>Git: branch: feat/api-v2 [clean]</span>
+                <span>CPU: 18% • RAM: 14.2 GB / 32 GB • Docker: running</span>
+                <span>Status: Online</span>
+            </div>
+        </div>
+
+        <!-- Generic Domestic Dialog (Fridge, Bed, Kitchen, Door/Commute, Coffee) -->
+        <div class="domestic-modal" id="domestic-modal" style="display: none;">
+            <div class="domestic-title" id="dom-title">Действие</div>
+            <div class="domestic-desc" id="dom-desc">Описание действия</div>
+            <div class="action-options-list" id="dom-options">
+                <!-- Action buttons populated dynamically -->
+            </div>
+            <button class="ide-btn" style="margin-top: 8px; align-self: flex-end;" onclick="GameApp.closeModal()">Отмена [ESC]</button>
+        </div>
+
+        
+        <!-- Technical Interview Dialog Window -->
+        <div class="interview-modal-box" id="interview-modal" style="display: none;">
+            <div class="interview-interviewer-card">
+                <div class="interviewer-avatar">👨‍💻</div>
+                <div style="flex:1;">
+                    <div style="font-size:15px; font-weight:700; color:#f8fafc;">Артём Савельев</div>
+                    <div style="font-size:12px; color:#38bdf8;">Тимлид бэкенд-разработки • AuraCloud Solutions</div>
+                </div>
+                <div id="interview-progress-pill" style="font-size:12px; font-weight:700; color:#a5b4fc; background:#1e1b4b; padding:4px 10px; border-radius:6px; font-family:var(--code-font);">Вопрос 1 из 4</div>
+            </div>
+
+            <div class="question-card">
+                <div class="question-text" id="interview-question-text">Загрузка вопроса...</div>
+                <div class="answers-list" id="interview-answers-list">
+                    <!-- Dynamic choice buttons -->
+                </div>
+            </div>
+            <button class="ide-btn" style="align-self:flex-end;" onclick="HiringEngine.cancelInterview()">Прервать собеседование [ESC]</button>
+        </div>
+
+        <!-- Server Datacenter Linux Terminal Window -->
+        <div class="server-terminal-window" id="server-terminal-window" style="display: none;">
+            <div class="terminal-top-bar">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: #38bdf8; box-shadow: 0 0 10px #38bdf8;"></span>
+                    <span>🐧 ServerOps Core • KVM Terminal (srv-core-01.dc.aura.ru)</span>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="ide-btn" id="btn-server-autofix" onclick="ServerTerminal.runAutoFix()" style="background:#4338ca; border-color:#6366f1; color:#fff; font-size:11px;">🪄 Выполнить фикс</button>
+                    <button class="os-close-btn" onclick="GameApp.closeModal()">Закрыть консоль [ESC]</button>
+                </div>
+            </div>
+            <div class="terminal-grid">
+                <!-- Sidebar with Server Tasks / Incidents -->
+                <div class="terminal-tasks-sidebar">
+                    <div style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">
+                        🚨 Активные инциденты стойки #4
+                    </div>
+                    <div id="server-tasks-list" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Dynamically filled -->
+                    </div>
+                    <div style="margin-top: auto; padding: 10px; background: #1e1b4b; border-radius: 8px; border: 1px solid #4338ca; font-size: 11px; color: #c7d2fe;">
+                        💡 <strong>Шпаргалка:</strong><br>
+                        • <code>systemctl restart [служба]</code><br>
+                        • <code>docker restart [контейнер]</code><br>
+                        • <code>kill -9 [PID]</code> (убить процесс)<br>
+                        • <code>df -h</code> (диск), <code>top</code> (CPU)
+                    </div>
+                </div>
+
+                <!-- Main Terminal Screen -->
+                <div class="terminal-main-area">
+                    <div class="terminal-screen" id="terminal-screen"></div>
+                    <div class="quick-cmd-bar">
+                        <span style="font-size:11px; color:#64748b;">Быстрый ввод:</span>
+                        <button class="quick-cmd-btn" onclick="ServerTerminal.execQuick('top')">top</button>
+                        <button class="quick-cmd-btn" onclick="ServerTerminal.execQuick('df -h')">df -h</button>
+                        <button class="quick-cmd-btn" onclick="ServerTerminal.execQuick('docker ps')">docker ps</button>
+                        <button class="quick-cmd-btn" onclick="ServerTerminal.execQuick('systemctl status nginx')">systemctl status nginx</button>
+                        <button class="quick-cmd-btn" onclick="ServerTerminal.execQuick('clear')">clear</button>
+                    </div>
+                    <div class="terminal-input-row">
+                        <span class="terminal-input-prompt">root@srv-core-01:~#</span>
+                        <input type="text" class="terminal-input-field" id="terminal-input" placeholder="Введите команду Linux (например: systemctl restart gunicorn или kill -9 4120)..." spellcheck="false" autocomplete="off">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- MAIN GAME ENGINE SCRIPT -->
+    <script src="game.js"></script>
+</body>
+</html>
